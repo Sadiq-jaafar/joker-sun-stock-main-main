@@ -2,17 +2,129 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ArrowRight, Package, TrendingUp, Users, ShoppingCart } from "lucide-react";
-import { mockInventoryItems, mockUsers } from "@/data/mockData";
 import { UserRole } from "@/types/inventory";
+import { useEffect, useState } from "react";
+import { supabase } from "@/lib/supabase";
+import { useToast } from "@/hooks/use-toast";
+
+interface Activity {
+  type: 'sale' | 'inventory' | 'warning';
+  title: string;
+  description: string;
+  timestamp: string;
+}
 
 interface DashboardProps {
   currentUser: { name: string; role: UserRole };
 }
 
 export function Dashboard({ currentUser }: DashboardProps) {
-  const totalItems = mockInventoryItems.reduce((sum, item) => sum + item.quantity, 0);
-  const totalValue = mockInventoryItems.reduce((sum, item) => sum + (item.minPrice * item.quantity), 0);
-  const lowStockItems = mockInventoryItems.filter(item => item.quantity < 3);
+  const [totalItems, setTotalItems] = useState(0);
+  const [totalValue, setTotalValue] = useState(0);
+  const [lowStockCount, setLowStockCount] = useState(0);
+  const [productTypesCount, setProductTypesCount] = useState(0);
+  const [recentActivities, setRecentActivities] = useState<Activity[]>([]);
+  const { toast } = useToast();
+
+  useEffect(() => {
+    const fetchDashboardData = async () => {
+      try {
+        // Fetch inventory summary
+        const { data: inventoryData, error: inventoryError } = await supabase
+          .from('inventory_items')
+          .select('quantity, min_price, measure_type, length');
+
+        if (inventoryError) throw inventoryError;
+
+        // Calculate totals
+        if (inventoryData) {
+          const total = inventoryData.reduce((sum, item) => {
+            return sum + (item.measure_type === 'standard' ? (item.quantity || 0) : (item.length || 0));
+          }, 0);
+          const value = inventoryData.reduce((sum, item) => {
+            return sum + (item.min_price || 0) * (item.measure_type === 'standard' ? (item.quantity || 0) : (item.length || 0));
+          }, 0);
+          const lowStock = inventoryData.filter(item => 
+            (item.measure_type === 'standard' && (item.quantity || 0) < 10) ||
+            (item.measure_type === 'length' && (item.length || 0) < 10)
+          ).length;
+
+          setTotalItems(total);
+          setTotalValue(value);
+          setLowStockCount(lowStock);
+          setProductTypesCount(inventoryData.length);
+        }
+
+        // Fetch recent activities
+        const { data: recentSales, error: salesError } = await supabase
+          .from('sales')
+          .select('*')
+          .order('sold_at', { ascending: false })
+          .limit(3);
+
+        if (salesError) throw salesError;
+
+        const { data: recentInventory, error: inventoryUpdateError } = await supabase
+          .from('inventory_items')
+          .select('*')
+          .order('updated_at', { ascending: false })
+          .limit(3);
+
+        if (inventoryUpdateError) throw inventoryUpdateError;
+
+        // Combine and sort activities
+        const activities: Activity[] = [
+          ...(recentSales?.map(sale => ({
+            type: 'sale' as const,
+            title: 'Sale completed',
+            description: `${sale.customer_name} - ₦${sale.total.toLocaleString()}`,
+            timestamp: sale.sold_at
+          })) || []),
+          ...(recentInventory?.map(item => ({
+            type: 'inventory' as const,
+            title: 'Inventory updated',
+            description: `${item.name} - ${item.measure_type === 'standard' ? item.quantity + ' units' : item.length + ' meters'}`,
+            timestamp: item.updated_at
+          })) || [])
+        ].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+         .slice(0, 3);
+
+        setRecentActivities(activities);
+
+      } catch (error) {
+        console.error('Error fetching dashboard data:', error);
+        toast({
+          variant: 'destructive',
+          title: 'Error',
+          description: 'Failed to load dashboard data'
+        });
+      }
+    };
+
+    fetchDashboardData();
+
+    // Set up real-time subscriptions
+    const inventorySubscription = supabase
+      .channel('inventory-changes')
+      .on('postgres_changes', 
+        { event: '*', schema: 'public', table: 'inventory_items' },
+        () => fetchDashboardData()
+      )
+      .subscribe();
+
+    const salesSubscription = supabase
+      .channel('sales-changes')
+      .on('postgres_changes',
+        { event: '*', schema: 'public', table: 'sales' },
+        () => fetchDashboardData()
+      )
+      .subscribe();
+
+    return () => {
+      inventorySubscription.unsubscribe();
+      salesSubscription.unsubscribe();
+    };
+  }, [toast]);
 
   return (
     <div className=" flex flex-col min-h-screen bg-gradient-subtle">
@@ -65,7 +177,7 @@ export function Dashboard({ currentUser }: DashboardProps) {
             <CardContent>
               <div className="text-2xl font-bold text-primary">{totalItems}</div>
               <p className="text-xs text-muted-foreground">
-                Across {mockInventoryItems.length} product types
+                Across {productTypesCount} product types
               </p>
             </CardContent>
           </Card>
@@ -89,7 +201,7 @@ export function Dashboard({ currentUser }: DashboardProps) {
               <ShoppingCart className="h-4 w-4 text-destructive" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-destructive">{lowStockItems.length}</div>
+              <div className="text-2xl font-bold text-destructive">{lowStockCount}</div>
               <p className="text-xs text-muted-foreground">
                 Items below 10 units
               </p>
@@ -107,30 +219,23 @@ export function Dashboard({ currentUser }: DashboardProps) {
               <CardDescription>Latest updates in your store</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/30">
-                <div className="h-2 w-2 bg-green-500 rounded-full"></div>
-                <div className="flex-1">
-                  <p className="text-sm font-medium">New inventory added</p>
-                  <p className="text-xs text-muted-foreground">Solar Panel 300W - 50 units</p>
+              {recentActivities.map((activity, index) => (
+                <div key={index} className="flex items-center gap-3 p-3 rounded-lg bg-muted/30">
+                  <div className={`h-2 w-2 rounded-full ${activity.type === 'sale' ? 'bg-blue-500' : activity.type === 'warning' ? 'bg-yellow-500' : 'bg-green-500'}`}></div>
+                  <div className="flex-1">
+                    <p className="text-sm font-medium">{activity.title}</p>
+                    <p className="text-xs text-muted-foreground">{activity.description}</p>
+                  </div>
+                  <span className="text-xs text-muted-foreground">
+                    {new Date(activity.timestamp).toLocaleDateString()}
+                  </span>
                 </div>
-                <span className="text-xs text-muted-foreground">2h ago</span>
-              </div>
-              <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/30">
-                <div className="h-2 w-2 bg-blue-500 rounded-full"></div>
-                <div className="flex-1">
-                  <p className="text-sm font-medium">Sale completed</p>
-                  <p className="text-xs text-muted-foreground">Battery Storage - ₦800</p>
+              ))}
+              {recentActivities.length === 0 && (
+                <div className="text-center text-sm text-muted-foreground py-4">
+                  No recent activity
                 </div>
-                <span className="text-xs text-muted-foreground">4h ago</span>
-              </div>
-              <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/30">
-                <div className="h-2 w-2 bg-yellow-500 rounded-full"></div>
-                <div className="flex-1">
-                  <p className="text-sm font-medium">Low stock warning</p>
-                  <p className="text-xs text-muted-foreground">Inverter 5kW - 15 units left</p>
-                </div>
-                <span className="text-xs text-muted-foreground">1d ago</span>
-              </div>
+              )}
             </CardContent>
           </Card>
 

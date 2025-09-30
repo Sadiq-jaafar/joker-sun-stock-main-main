@@ -79,7 +79,7 @@ export default function Login() {
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-gray-100">
-      <h1 className="text-3xl font-bold mb-8 text-primary">Joker Solar Solution</h1>
+      <h1 className="text-3xl font-bold mb-8 text-primary">Jokahh Solar Solution</h1>
       <Card className="w-[350px]">
         <CardHeader>
           <CardTitle>Login</CardTitle>
