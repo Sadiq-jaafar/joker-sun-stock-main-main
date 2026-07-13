@@ -54,7 +54,7 @@ const App = () => (
           <Route
             path="/admin/inventory"
             element={
-              <ProtectedRoute requiredRole="admin">
+              <ProtectedRoute>
                 <DashboardLayout>
                   <AdminInventory />
                 </DashboardLayout>
@@ -64,7 +64,7 @@ const App = () => (
           <Route
             path="/admin/users"
             element={
-              <ProtectedRoute requiredRole="admin">
+              <ProtectedRoute>
                 <DashboardLayout>
                   <AdminUsers />
                 </DashboardLayout>
@@ -74,7 +74,7 @@ const App = () => (
           <Route
             path="/admin/sales"
             element={
-              <ProtectedRoute requiredRole="admin">
+              <ProtectedRoute>
                 <DashboardLayout>
                   <AdminSales />
                 </DashboardLayout>
@@ -84,7 +84,7 @@ const App = () => (
           <Route
             path="/admin/credit"
             element={
-              <ProtectedRoute requiredRole="admin">
+              <ProtectedRoute>
                 <DashboardLayout>
                   <AdminCredit />
                 </DashboardLayout>

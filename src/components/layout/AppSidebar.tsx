@@ -49,10 +49,10 @@ export function AppSidebar({ currentUser }: AppSidebarProps) {
   const navigation = [
     { id: "dashboard", name: "Dashboard", icon: LayoutDashboard, href: "/" },
     { id: "inventory", name: "Inventory", icon: Package, href: "/inventory" },
+    { id: "admin-sales", name: "Sales Reports", icon: TrendingUp, href: "/admin/sales" },
     ...(currentUser.role === 'admin' ? [
       { id: "admin-inventory", name: "Manage Inventory", icon: Settings, href: "/admin/inventory" },
       { id: "admin-users", name: "Manage Users", icon: Users, href: "/admin/users" },
-      { id: "admin-sales", name: "Sales Reports", icon: TrendingUp, href: "/admin/sales" },
       { id: "admin-credit", name: "Credit Sales", icon: CreditCard, href: "/admin/credit" }
     ] : [])
   ];
