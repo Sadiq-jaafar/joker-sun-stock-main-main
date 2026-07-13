@@ -18,97 +18,91 @@ export function ReceiptModal({ isOpen, onClose, sale }: ReceiptModalProps) {
     window.print();
   };
 
-  const handleDownload = () => {
-    const doc = new jsPDF();
-    let yPosition = 15;
-    const pageWidth = doc.internal.pageSize.getWidth();
-    const pageHeight = doc.internal.pageSize.getHeight();
-    const margin = 14;
-    const maxWidth = pageWidth - 2 * margin;
+ const handleDownload = () => {
+  const doc = new jsPDF();
+  let yPosition = 15;
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const pageHeight = doc.internal.pageSize.getHeight();
+  const margin = 14;
 
-    // Header
-    doc.setFontSize(14);
-    doc.text("JOKER SOLAR SOLUTION", pageWidth / 2, yPosition, { align: "center" });
-    yPosition += 6;
-    doc.setFontSize(10);
-    doc.text("Electronics Store", pageWidth / 2, yPosition, { align: "center" });
-    yPosition += 4;
-    doc.text("Solar Energy Equipment", pageWidth / 2, yPosition, { align: "center" });
-    yPosition += 8;
+  // jsPDF's core fonts (Helvetica/Times/Courier) use WinAnsi encoding,
+  // which has no ₦ glyph — it silently falls back to a broken bar (¦).
+  // Format currency as "NGN 1,234.00" for anything written into the PDF.
+  const naira = (amount: number) => `NGN ${amount.toFixed(2)}`;
 
-    // Separator
-    doc.line(margin, yPosition, pageWidth - margin, yPosition);
-    yPosition += 6;
+  // Header
+  doc.setFontSize(14);
+  doc.text("JOKER SOLAR SOLUTION", pageWidth / 2, yPosition, { align: "center" });
+  yPosition += 6;
+  doc.setFontSize(10);
+  doc.text("Electronics Store", pageWidth / 2, yPosition, { align: "center" });
+  yPosition += 4;
+  doc.text("Solar Energy Equipment", pageWidth / 2, yPosition, { align: "center" });
+  yPosition += 8;
 
-    // Receipt Details
-    doc.setFontSize(10);
-    doc.text(`Receipt #: ${sale.receiptNumber}`, margin, yPosition);
-    yPosition += 5;
-    doc.text(`Date: ${new Date(sale.soldAt).toLocaleString()}`, margin, yPosition);
-    yPosition += 5;
-    doc.text(`Customer: ${sale.customerName}`, margin, yPosition);
-    yPosition += 5;
-    doc.text(`Sold by: ${sale.soldBy}`, margin, yPosition);
-    yPosition += 8;
+  doc.line(margin, yPosition, pageWidth - margin, yPosition);
+  yPosition += 6;
 
-    // Separator
-    doc.line(margin, yPosition, pageWidth - margin, yPosition);
-    yPosition += 6;
+  doc.setFontSize(10);
+  doc.text(`Receipt #: ${sale.receiptNumber}`, margin, yPosition);
+  yPosition += 5;
+  doc.text(`Date: ${new Date(sale.soldAt).toLocaleString()}`, margin, yPosition);
+  yPosition += 5;
+  doc.text(`Customer: ${sale.customerName}`, margin, yPosition);
+  yPosition += 5;
+  doc.text(`Sold by: ${sale.soldBy}`, margin, yPosition);
+  yPosition += 8;
 
-    // Items Header
-    doc.setFont(undefined, "bold");
-    doc.text("ITEMS", margin, yPosition);
-    yPosition += 6;
-    doc.setFont(undefined, "normal");
+  doc.line(margin, yPosition, pageWidth - margin, yPosition);
+  yPosition += 6;
 
-    // Items
-    sale.items.forEach((cartItem) => {
-      if (yPosition > pageHeight - 30) {
-        doc.addPage();
-        yPosition = 15;
-      }
-      doc.setFontSize(9);
-      doc.text(`${cartItem.item.name}`, margin, yPosition);
-      yPosition += 4;
-      doc.text(`${cartItem.item.brand} ${cartItem.item.model}`, margin + 2, yPosition);
-      yPosition += 4;
-      const itemTotal = cartItem.selectedPrice * cartItem.quantity;
-      doc.text(
-        `${cartItem.quantity} x ₦${cartItem.selectedPrice.toFixed(2)} = ₦${itemTotal.toFixed(2)}`,
-        margin + 2,
-        yPosition
-      );
-      yPosition += 6;
-    });
+  doc.setFont(undefined, "bold");
+  doc.text("ITEMS", margin, yPosition);
+  yPosition += 6;
+  doc.setFont(undefined, "normal");
 
-    yPosition += 2;
-
-    // Separator
-    doc.line(margin, yPosition, pageWidth - margin, yPosition);
-    yPosition += 6;
-
-    // Total
-    doc.setFontSize(12);
-    doc.setFont(undefined, "bold");
-    doc.text("Total:", margin, yPosition);
-    doc.text(`₦${sale.total.toFixed(2)}`, pageWidth - margin, yPosition, { align: "right" });
-    yPosition += 8;
-
-    // Separator
-    doc.setFont(undefined, "normal");
-    doc.line(margin, yPosition, pageWidth - margin, yPosition);
-    yPosition += 6;
-
-    // Footer
+  sale.items.forEach((cartItem) => {
+    if (yPosition > pageHeight - 30) {
+      doc.addPage();
+      yPosition = 15;
+    }
     doc.setFontSize(9);
-    doc.text("Thank you for your business!", pageWidth / 2, yPosition, { align: "center" });
+    doc.text(`${cartItem.item.name}`, margin, yPosition);
     yPosition += 4;
-    doc.text("Visit us at jokersolar.com", pageWidth / 2, yPosition, { align: "center" });
+    doc.text(`${cartItem.item.brand} ${cartItem.item.model}`, margin + 2, yPosition);
     yPosition += 4;
-    doc.text("All sales are final", pageWidth / 2, yPosition, { align: "center" });
+    const itemTotal = cartItem.selectedPrice * cartItem.quantity;
+    doc.text(
+      `${cartItem.quantity} x ${naira(cartItem.selectedPrice)} = ${naira(itemTotal)}`,
+      margin + 2,
+      yPosition
+    );
+    yPosition += 6;
+  });
 
-    doc.save(`receipt-${sale.receiptNumber}.pdf`);
-  };
+  yPosition += 2;
+  doc.line(margin, yPosition, pageWidth - margin, yPosition);
+  yPosition += 6;
+
+  doc.setFontSize(12);
+  doc.setFont(undefined, "bold");
+  doc.text("Total:", margin, yPosition);
+  doc.text(naira(sale.total), pageWidth - margin, yPosition, { align: "right" });
+  yPosition += 8;
+
+  doc.setFont(undefined, "normal");
+  doc.line(margin, yPosition, pageWidth - margin, yPosition);
+  yPosition += 6;
+
+  doc.setFontSize(9);
+  doc.text("Thank you for your business!", pageWidth / 2, yPosition, { align: "center" });
+  yPosition += 4;
+  doc.text("Visit us at jokersolar.com", pageWidth / 2, yPosition, { align: "center" });
+  yPosition += 4;
+  doc.text("All sales are final", pageWidth / 2, yPosition, { align: "center" });
+
+  doc.save(`receipt-${sale.receiptNumber}.pdf`);
+};
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
