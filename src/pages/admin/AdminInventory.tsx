@@ -8,7 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Pencil, Trash2, Package } from "lucide-react";
+import { Plus, Pencil, Trash2, Package, Search } from "lucide-react";
 import { InventoryItem } from "@/types/inventory";
 import { supabase } from "@/lib/supabase";
 import { useToast } from "@/hooks/use-toast";
@@ -18,6 +18,7 @@ export function AdminInventory() {
   const [isLoading, setIsLoading] = useState(true);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<InventoryItem | null>(null);
+  const [searchTerm, setSearchTerm] = useState("");
   const { toast } = useToast();
 
   useEffect(() => {
@@ -481,6 +482,15 @@ export function AdminInventory() {
           <CardDescription>Manage your store inventory</CardDescription>
         </CardHeader>
         <CardContent>
+          <div className="mb-4 relative">
+            <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search by name, category, brand, or model..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-10"
+            />
+          </div>
           <div className="rounded-md border">
             <Table>
               <TableHeader>
@@ -495,48 +505,65 @@ export function AdminInventory() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {items.map((item) => {
-                  const status = getStockStatus(item.quantity, item);
-                  return (
-                    <TableRow key={item.id}>
-                      <TableCell className="font-medium">{item.name}</TableCell>
-                      <TableCell>{item.category}</TableCell>
-                      <TableCell>
-                        {item.brand} {item.model && `- ${item.model}`}
-                      </TableCell>
-                      <TableCell>₦{item.minPrice.toFixed(2)} - ₦{item.maxPrice.toFixed(2)}</TableCell>
-                      <TableCell>
-                        {item.measureType === 'standard' 
-                          ? item.quantity 
-                          : `${item.length?.toFixed(2)} meters`}
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant={status.variant}>{status.label}</Badge>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex justify-end gap-2">
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => handleEditItem(item)}
-                          >
-                            <Pencil className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => handleDeleteItem(item.id)}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
+                {items
+                  .filter((item) =>
+                    item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                    item.category.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                    item.brand.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                    item.model.toLowerCase().includes(searchTerm.toLowerCase())
+                  )
+                  .map((item) => {
+                    const status = getStockStatus(item.quantity, item);
+                    return (
+                      <TableRow key={item.id}>
+                        <TableCell className="font-medium">{item.name}</TableCell>
+                        <TableCell>{item.category}</TableCell>
+                        <TableCell>
+                          {item.brand} {item.model && `- ${item.model}`}
+                        </TableCell>
+                        <TableCell>₦{item.minPrice.toFixed(2)} - ₦{item.maxPrice.toFixed(2)}</TableCell>
+                        <TableCell>
+                          {item.measureType === 'standard' 
+                            ? item.quantity 
+                            : `${item.length?.toFixed(2)} meters`}
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant={status.variant}>{status.label}</Badge>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex justify-end gap-2">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleEditItem(item)}
+                            >
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleDeleteItem(item.id)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
               </TableBody>
             </Table>
           </div>
+          {items.filter((item) =>
+            item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            item.category.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            item.brand.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            item.model.toLowerCase().includes(searchTerm.toLowerCase())
+          ).length === 0 && (
+            <div className="text-center py-8 text-muted-foreground">
+              No items found matching your search.
+            </div>
+          )}
         </CardContent>
       </Card>
 

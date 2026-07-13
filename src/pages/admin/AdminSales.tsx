@@ -13,6 +13,7 @@ import { TrendingUp, Calendar, DollarSign, Package, Search, FileText, Download, 
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { useSidebar } from "@/components/ui/sidebar";
 import { Sale, InventoryItem } from "@/types/inventory";
+import { ReceiptModal } from "@/components/inventory/ReceiptModal";
 
 interface RawSaleItem {
   item: {
@@ -38,6 +39,8 @@ export function AdminSales() {
   const { toast } = useToast();
   const [sales, setSales] = useState<Sale[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [selectedSale, setSelectedSale] = useState<Sale | null>(null);
+  const [isReceiptOpen, setIsReceiptOpen] = useState(false);
 
   // Fetch sales data
   useEffect(() => {
@@ -299,7 +302,14 @@ export function AdminSales() {
               </TableHeader>
               <TableBody>
                 {filteredSales.map((sale) => (
-                  <TableRow key={sale.id}>
+                  <TableRow
+                    key={sale.id}
+                    onClick={() => {
+                      setSelectedSale(sale);
+                      setIsReceiptOpen(true);
+                    }}
+                    className="cursor-pointer hover:bg-muted/5"
+                  >
                     <TableCell className="font-medium">{sale.receiptNumber}</TableCell>
                     <TableCell>
                       <div className="space-y-1">
@@ -341,6 +351,7 @@ export function AdminSales() {
           )}
         </CardContent>
       </Card>
+      <ReceiptModal isOpen={isReceiptOpen} onClose={() => setIsReceiptOpen(false)} sale={selectedSale} />
     </div>
   );
 }

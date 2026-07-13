@@ -3,6 +3,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Receipt, Download, Printer } from "lucide-react";
+import jsPDF from "jspdf";
 
 interface ReceiptModalProps {
   isOpen: boolean;
@@ -18,14 +19,95 @@ export function ReceiptModal({ isOpen, onClose, sale }: ReceiptModalProps) {
   };
 
   const handleDownload = () => {
-    const receiptContent = generateReceiptText(sale);
-    const blob = new Blob([receiptContent], { type: 'text/plain' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `receipt-${sale.receiptNumber}.txt`;
-    a.click();
-    URL.revokeObjectURL(url);
+    const doc = new jsPDF();
+    let yPosition = 15;
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const pageHeight = doc.internal.pageSize.getHeight();
+    const margin = 14;
+    const maxWidth = pageWidth - 2 * margin;
+
+    // Header
+    doc.setFontSize(14);
+    doc.text("JOKER SOLAR SOLUTION", pageWidth / 2, yPosition, { align: "center" });
+    yPosition += 6;
+    doc.setFontSize(10);
+    doc.text("Electronics Store", pageWidth / 2, yPosition, { align: "center" });
+    yPosition += 4;
+    doc.text("Solar Energy Equipment", pageWidth / 2, yPosition, { align: "center" });
+    yPosition += 8;
+
+    // Separator
+    doc.line(margin, yPosition, pageWidth - margin, yPosition);
+    yPosition += 6;
+
+    // Receipt Details
+    doc.setFontSize(10);
+    doc.text(`Receipt #: ${sale.receiptNumber}`, margin, yPosition);
+    yPosition += 5;
+    doc.text(`Date: ${new Date(sale.soldAt).toLocaleString()}`, margin, yPosition);
+    yPosition += 5;
+    doc.text(`Customer: ${sale.customerName}`, margin, yPosition);
+    yPosition += 5;
+    doc.text(`Sold by: ${sale.soldBy}`, margin, yPosition);
+    yPosition += 8;
+
+    // Separator
+    doc.line(margin, yPosition, pageWidth - margin, yPosition);
+    yPosition += 6;
+
+    // Items Header
+    doc.setFont(undefined, "bold");
+    doc.text("ITEMS", margin, yPosition);
+    yPosition += 6;
+    doc.setFont(undefined, "normal");
+
+    // Items
+    sale.items.forEach((cartItem) => {
+      if (yPosition > pageHeight - 30) {
+        doc.addPage();
+        yPosition = 15;
+      }
+      doc.setFontSize(9);
+      doc.text(`${cartItem.item.name}`, margin, yPosition);
+      yPosition += 4;
+      doc.text(`${cartItem.item.brand} ${cartItem.item.model}`, margin + 2, yPosition);
+      yPosition += 4;
+      const itemTotal = cartItem.selectedPrice * cartItem.quantity;
+      doc.text(
+        `${cartItem.quantity} x ₦${cartItem.selectedPrice.toFixed(2)} = ₦${itemTotal.toFixed(2)}`,
+        margin + 2,
+        yPosition
+      );
+      yPosition += 6;
+    });
+
+    yPosition += 2;
+
+    // Separator
+    doc.line(margin, yPosition, pageWidth - margin, yPosition);
+    yPosition += 6;
+
+    // Total
+    doc.setFontSize(12);
+    doc.setFont(undefined, "bold");
+    doc.text("Total:", margin, yPosition);
+    doc.text(`₦${sale.total.toFixed(2)}`, pageWidth - margin, yPosition, { align: "right" });
+    yPosition += 8;
+
+    // Separator
+    doc.setFont(undefined, "normal");
+    doc.line(margin, yPosition, pageWidth - margin, yPosition);
+    yPosition += 6;
+
+    // Footer
+    doc.setFontSize(9);
+    doc.text("Thank you for your business!", pageWidth / 2, yPosition, { align: "center" });
+    yPosition += 4;
+    doc.text("Visit us at jokersolar.com", pageWidth / 2, yPosition, { align: "center" });
+    yPosition += 4;
+    doc.text("All sales are final", pageWidth / 2, yPosition, { align: "center" });
+
+    doc.save(`receipt-${sale.receiptNumber}.pdf`);
   };
 
   return (
@@ -76,11 +158,11 @@ export function ReceiptModal({ isOpen, onClose, sale }: ReceiptModalProps) {
               <div key={index} className="space-y-1">
                 <div className="flex justify-between">
                   <span className="text-sm font-medium">{cartItem.item.name}</span>
-                  <span className="text-sm">${(cartItem.selectedPrice * cartItem.quantity).toFixed(2)}</span>
+                  <span className="text-sm">₦{(cartItem.selectedPrice * cartItem.quantity).toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between text-xs text-muted-foreground">
                   <span>{cartItem.item.brand} {cartItem.item.model}</span>
-                  <span>{cartItem.quantity} × ${cartItem.selectedPrice.toFixed(2)}</span>
+                  <span>{cartItem.quantity} × ₦{cartItem.selectedPrice.toFixed(2)}</span>
                 </div>
               </div>
             ))}
@@ -91,7 +173,7 @@ export function ReceiptModal({ isOpen, onClose, sale }: ReceiptModalProps) {
           {/* Total */}
           <div className="flex justify-between font-bold text-lg">
             <span>Total:</span>
-            <span>${sale.total.toFixed(2)}</span>
+            <span>₦{sale.total.toFixed(2)}</span>
           </div>
 
           <Separator />
@@ -145,12 +227,12 @@ function generateReceiptText(sale: Sale): string {
   sale.items.forEach((cartItem) => {
     lines.push(`${cartItem.item.name}`);
     lines.push(`${cartItem.item.brand} ${cartItem.item.model}`);
-    lines.push(`${cartItem.quantity} × $${cartItem.selectedPrice.toFixed(2)} = $${(cartItem.selectedPrice * cartItem.quantity).toFixed(2)}`);
+    lines.push(`${cartItem.quantity} × ₦${cartItem.selectedPrice.toFixed(2)} = ₦${(cartItem.selectedPrice * cartItem.quantity).toFixed(2)}`);
     lines.push("");
   });
 
   lines.push("-------------------------------------");
-  lines.push(`TOTAL: $${sale.total.toFixed(2)}`);
+  lines.push(`TOTAL: ₦${sale.total.toFixed(2)}`);
   lines.push("=====================================");
   lines.push("");
   lines.push("Thank you for your business!");
