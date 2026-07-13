@@ -106,7 +106,7 @@ export function ReceiptModal({ isOpen, onClose, sale }: ReceiptModalProps) {
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-w-md max-h-[90vh] overflow-hidden">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Receipt className="h-5 w-5" />
@@ -114,7 +114,7 @@ export function ReceiptModal({ isOpen, onClose, sale }: ReceiptModalProps) {
           </DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-4 print:text-black">
+        <div className="space-y-4 print:text-black overflow-y-auto max-h-[75vh] pr-2">
           {/* Header */}
           <div className="text-center space-y-1">
             <h2 className="text-xl font-bold">Joker Solar Solution</h2>
